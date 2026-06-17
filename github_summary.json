@@ -1,0 +1,140 @@
+{
+  "_purpose": "Глубокий технический разбор каждого проекта: архитектурные решения, алгоритмы, паттерны, trade-offs. Описания проектов — в candidate_profile.json. Здесь только КАК и ПОЧЕМУ именно так.",
+  "projects": [
+    {
+      "name": "PAS",
+      "ml_pipeline": {
+        "dataset": "marmal88/skin_cancer через Hugging Face datasets API. Загрузка, кэширование, батчинг — через стандартный HF DataLoader. Критично: датасет сильно несбалансирован (NV — доминирующий класс, MEL — редкий).",
+        "class_imbalance_strategy": "Weighted Cross-Entropy Loss: вес каждого класса обратно пропорционален его частоте в обучающей выборке. Альтернативно — оверсэмплинг редких классов в DataLoader через WeightedRandomSampler. Это принципиально для медицинских данных: цена ложноотрицательного MEL (пропущенная меланома) несопоставимо выше, чем ложноположительного.",
+        "augmentation": "torchvision.transforms / Albumentations: RandomHorizontalFlip, RandomRotation (до 20°), ColorJitter (brightness, contrast, saturation — компенсация разного освещения дерматоскопа), RandomResizedCrop. Нормализация по ImageNet-статистике для совместимости с предобученными весами.",
+        "transfer_learning": "Предобученные веса ImageNet. Этап 1: заморозка всех слоёв базовой модели (feature extractor), дообучение только classification head — быстрая сходимость, нет риска катастрофического забывания. Этап 2 (опционально): разморозка последних N слоёв для fine-tuning с малым LR (~1e-5).",
+        "training_loop": "Разделение train/val/test. Отслеживание val_loss и val_f1_macro. ModelCheckpointing по Macro F1 (а не Accuracy), т.к. Accuracy вводит в заблуждение на несбалансированных данных. EarlyStopping(patience=5).",
+        "metrics_rationale": "Macro F1 (одинаковый вес для каждого класса) и Recall для MEL — основные метрики. Accuracy отображается для читаемости, но не как целевая метрика оптимизации."
+      },
+      "backend_architecture": {
+        "async_inference_client": "httpx.AsyncClient с настроенным пулом соединений и лимитами (max_connections, max_keepalive). Изображение передаётся как бинарный поток application/octet-stream — нет затрат на base64-кодирование.",
+        "label_sanitization": "Парсер raw_label через регулярные выражения + словарь синонимов SYNONYMS_TO_CODE. Нужен потому что ML-сервис может вернуть 'melanoma', 'MEL', 'mel', 'Melanoma' — все маппируются к каноничному 'MEL'. Это защита от дрейфа формата вывода модели.",
+        "graceful_degradation": "При сетевой ошибке или ошибке парсинга вместо исключения генерируется псевдослучайное распределение вероятностей с окном уверенности [0.7, 0.99]. Система продолжает работу, запись в БД создаётся с флагом is_simulated=True. Бизнес-логика не падает.",
+        "unit_of_work_pattern": "Каждая операция анализа снимка оборачивается в транзакцию: (1) запись метаданных в PostgreSQL, (2) загрузка файла в MinIO. При любом исключении на шаге 2 — db.rollback(), файл в MinIO не остаётся без записи в БД и наоборот. ACID-консистентность между двумя разнородными хранилищами.",
+        "council_algorithm": "recalculate_final_diagnosis: при нескольких прогонах одного снимка (например, с разными пресетами модели) финальный диагноз определяется как мода (collections.Counter) по массиву всех диагнозов в рамках обследования. Простой, но эффективный ensemble без дополнительного обучения.",
+        "db_optimization": "SQLAlchemy selectinload для eager loading связанных объектов (обследование → диагнозы → снимки). Решает N+1 проблему: вместо 1 + N запросов делается 2 запроса. Критично при выгрузке истории пациента с 50+ снимками.",
+        "s3_integration": "MinIO presigned_get_object с TTL для безопасного временного доступа к медицинским снимкам. Frontend получает временную ссылку, а не прямой доступ к бакету. Конфиденциальность медданных.",
+        "image_processing": "io.BytesIO: изображения обрабатываются in-memory через PIL.Image. Нет временных файлов на диске, нет I/O bottleneck при параллельных запросах."
+      },
+      "db_schema_design": {
+        "entities": ["Patient", "Examination", "Snapshot", "Diagnosis"],
+        "key_relationships": "Patient 1:N Examination, Examination 1:N Snapshot, Snapshot 1:1 Diagnosis. Снимок хранит только путь к файлу в MinIO (не сам файл). Диагноз хранит probability_distribution как JSONB для гибкости (разные модели могут возвращать разный набор классов).",
+        "normalization": "Схема в 3NF. Отдельная таблица нозологий (Pathology) для нормализации меток, а не enum в Diagnosis — позволяет добавлять новые классы без миграции схемы."
+      }
+    },
+    {
+      "name": "LLM RAG Endpoint",
+      "inference_engine": {
+        "model_loading": "llama-cpp-python с параметрами n_ctx (размер контекстного окна, задаётся на запрос), n_gpu_layers (количество слоёв на GPU), n_batch. CMAKE_ARGS='-DGGML_CUDA=ON' при сборке для CUDA-поддержки.",
+        "vram_management": "LRU-кэш с MAX_CACHED_MODELS=4. При вытеснении модели: явный вызов llama_free() + del model + gc.collect(). Без явного освобождения CUDA-память не возвращается к ОС из-за особенностей PyTorch/GGML memory pool.",
+        "concurrency": "ThreadPoolExecutor(max_workers=1) — single worker для GPU. Все запросы к модели сериализуются. Это сознательный trade-off: нет race conditions на GPU, нет OOM от параллельных inference, ценой throughput. Для single-user use case — оптимально.",
+        "structured_output": "GBNF (Generalized BNF Grammar) генерируется из JSON Schema через SchemaConverter. Модель физически не может сгенерировать невалидный JSON — это гарантия на уровне токен-семплинга, а не постобработки. Принципиальное отличие от 'попроси в промпте вернуть JSON'.",
+        "chain_of_thought": "Qwen3 поддерживает режим enable_thinking. При включении: парсинг блоков <think>...</think> из вывода, возврат отдельно thinking_content и response. Позволяет передавать 'рассуждения' модели клиенту для отладки.",
+        "performance_metrics": "time.perf_counter() вокруг каждого вызова модели. Накапливается список латентностей (deque с maxlen). P50/P90/P99 вычисляются на лету через numpy.percentile. tokens/sec = output_tokens / elapsed. Персистируется в памяти процесса (не в БД — метрики сбрасываются при рестарте)."
+      },
+      "rag_pipeline": {
+        "embedding_generation": "sentence-transformers: текст чанкируется → каждый чанк кодируется в вектор. Выбор chunk_size и chunk_overlap — ключевой гиперпараметр RAG, влияет на precision/recall поиска.",
+        "vector_store": "Qdrant: хранение векторов с метаданными (source, chunk_id). Поиск по косинусному сходству с top-k. Qdrant запускается в docker-compose как отдельный сервис.",
+        "retrieval": "При запросе: кодирование вопроса → поиск top-k релевантных чанков → сборка контекста → финальный промпт = system + retrieved_context + user_question.",
+        "quality_metrics": "После генерации ответа опционально считаются: ROUGE-1/2/L (overlap n-грамм с референсом), BLEU (precision n-грамм), BERTScore (семантическое сходство через BERT), Jaccard (overlap токенов). Используется для оценки деградации при смене модели."
+      },
+      "media_processing": {
+        "transcription": "faster-whisper (оптимизированная версия Whisper) для транскрипции аудио/видео в текст. Поддерживает GPU-ускорение. yt-dlp для скачивания видео с YouTube/VK/других платформ перед транскрипцией.",
+        "pipeline": "URL видео → yt-dlp скачивает аудиодорожку → faster-whisper транскрибирует → текст передаётся в LLM для суммаризации или тегирования."
+      }
+    },
+    {
+      "name": "DeepSeek PHP Code Summarizer",
+      "fine_tuning_mechanics": {
+        "model": "deepseek-ai/deepseek-coder-1.3b-base — каузальная LM (авторегрессионная генерация). AutoModelForCausalLM + AutoTokenizer из HF Transformers.",
+        "data_format": "Каждый пример: input = PHP-код функции, target = docstring. Конкатенируются с разделителем в один sequence. Labels = копия input_ids, но padding-токены заменены на -100. CrossEntropyLoss игнорирует -100 — модель обучается предсказывать только docstring, не код.",
+        "lr_scheduling": "Исследовались три стратегии: CosineAnnealingLR (плавное затухание к T_max, хорошо для длинных обучений), OneCycleLR (warmup + annealing в одном цикле, агрессивный), CyclicLR (циклическое изменение LR для выхода из локальных минимумов). Финальный выбор зависит от кривых сходимости в CometML.",
+        "swa": "StochasticWeightAveraging: усреднение весов модели с нескольких последних чекпоинтов. Улучшает обобщение без дополнительных эпох — как бесплатный ensemble. Включается через pl.callbacks.StochasticWeightAveraging.",
+        "checkpointing": "ModelCheckpoint(monitor='val_bleu', mode='max') — сохраняется модель с лучшим BLEU на валидации. EarlyStopping(patience=2, monitor='val_bleu') — быстрая остановка при отсутствии прогресса.",
+        "bleu_evaluation": "sacrebleu для стандартизированного BLEU (нормализация токенизации). NLTK corpus_bleu для альтернативной оценки. BLEU считается на val-батчах через decode (greedy sampling) → сравнение с референсными docstrings."
+      }
+    },
+    {
+      "name": "CNN ASL",
+      "architecture_design": {
+        "configurability": "CNN класс принимает conv_filters: list[int] и dense_layers: list[int]. Любая глубина без изменения кода. Conv-блок = Conv2d → BatchNorm2d → ReLU → MaxPool2d(2) → Dropout2d. BatchNorm2d: нормализует активации per-channel, ускоряет сходимость и снижает чувствительность к инициализации. AdaptiveAvgPool2d(1,1) + Flatten перед classifier: размер feature map после conv-блоков не важен — работает с любым входным разрешением.",
+        "hyperparameter_search": "Декартово произведение: filters × kernel_size × batch_size × dense_layers = 2×1×2×4 = 16 конфигураций. train_experiment() принимает все параметры, создаёт модель, DataLoader, trainer, запускает, логирует в wandb с уникальным именем run. Полностью воспроизводимо.",
+        "torchmetrics_design": "Отдельные объекты Accuracy/F1/Precision/Recall для train и val фаз. Если использовать один объект для обеих фаз — состояние (накопленные предсказания) смешивается. Это частая ошибка в PyTorch Lightning.",
+        "dataloader_optimization": "pin_memory=True: данные копируются в pinned (page-locked) memory → ускоряет transfer CPU→GPU. persistent_workers=True: worker-процессы не перезапускаются между эпохами → экономия ~2-5 сек/эпоха на создание процессов.",
+        "scheduler": "CosineAnnealingLR(T_max=30): LR убывает по косинусу от начального до η_min за T_max эпох. Не требует ручной настройки расписания, избегает 'ступенчатых' скачков LR. Gradient clipping (gradient_clip_val=1.0) в Trainer — защита от взрывного градиента."
+      }
+    },
+      {
+    "project_name": "RAG-система формирования персональных образовательных треков",
+    "role": "ML / NLP Engineer (Выпускная квалификационная работа)",
+    "tech_stack": [
+      "Python", "FastAPI", "llama.cpp (GGUF)", "CUDA", "Qwen3-Embedding", 
+      "GBNF-grammar", "ChromaDB/FAISS", "Whisper ASR", "Asyncio"
+    ],
+    "description": "Разработка и программная реализация локальной отказоустойчивой RAG-системы (Retrieval-Augmented Generation) для автоматического анализа образовательного контента (видеолекций) и построения адаптивных траекторий обучения.",
+    "key_contributions": [
+      "Проектирование полноциклового Ingestion-пайплайна (Раздел 2): реализовал конвейер обработки видеоматериалов, включающий извлечение аудиодорожек, автоматическую транскрибацию через Whisper ASR, очистку текста и интеллектуальное семантическое разбиение на чанки с перекрытием (overlap) для сохранения контекста.",
+      "Локальный инференс с GPU-акселерацией (Раздел 3): развернул и оптимизировал локальный эндпоинт для работы с квантованными моделями в формате GGUF (включая Qwen3-Embedding-0.6B-f16.gguf) с полной поддержкой CUDA, устранив зависимость от внешних коммерческих API и обеспечив приватность данных.",
+      "Оптимизация этапа Retrieval (Раздел 2): внедрил кастомную предобработку поисковых запросов с автоматическим добавлением специализированных префиксов (например, 'cluster: ') для выравнивания векторного пространства и максимизации релевантности (Hit Rate, MRR) при поиске в векторной базе данных.",
+      "Детерминированное структурирование вывода через GBNF (Раздел 3): интегрировал управление сэмплированием LLM на основе GBNF-грамматик (Grammar-Based Sampling), гарантировав генерацию ответов строго в валидном JSON-формате для бесшовной интеграции с бэкенд-сервисами.",
+      "Инструментация и профилирование (Раздел 3): разработал асинхронный модуль мониторинга производительности (metrics_store), осуществляющий сквозной трекинг параметров инференса — времени генерации первого токена (TTFT), скорости генерации (TPS) и перцентилей задержки (P50/P90/P99)."
+    ],
+    "rag_recomendation": {
+      "module_name": "Модуль адаптивного построения рекомендательных траекторий",
+      "mechanisms": [
+        "Интеллектуальный Gap-Analysis: реализовал алгоритм сопоставления текущей матрицы компетенций (профиля знаний) обучающегося с целевыми результатами курса для автоматического выявления дефицита навыков.",
+        "Контекстный подбор микромодулей: на основе векторов выявленных пробелов модуль генерирует таргетированные запросы к векторному хранилищу, извлекая наиболее релевантные фрагменты лекций, конспекты и проверочные тесты.",
+        "Синтез структурированного трека: настроил генеративный блок на сборку извлеченных материалов в пошаговый образовательный план; применение GBNF-грамматики обеспечивает вывод в виде строго типизированного JSON-дерева с указанием последовательности шагов, расчетной трудоемкости и метаданных источников.",
+        "Динамическая обратная связь: заложил логику реактивной перестройки трека в реальном времени — в случае неуспешного выполнения проверочного задания система инициирует повторный RAG-поиск, извлекает альтернативный («разжевывающий») материал по теме и корректирует последующие шаги графа рекомендаций."
+        ]
+      }
+    },
+    {
+      "name": "SMIDS Transfer Learning",
+      "architecture": {
+        "wrapper_class": "FullModelFromPretrained(base_model_fn, dense_units: list[int]). base_model_fn — любая tf.keras.applications функция (VGG16, MobileNet, ResNet50 и т.д.). include_top=False — отрезаем оригинальный classifier ImageNet. Замораживаем base_model.trainable=False. Добавляем GlobalAveragePooling2D → Dense(units, activation) для каждого значения в dense_units → Dense(num_classes, softmax).",
+        "global_avg_pooling": "GlobalAveragePooling2D vs Flatten: GAP усредняет каждый feature map до одного числа → output size = num_channels, независимо от spatial размера. Flatten: output size = channels × H × W → огромный вектор, много параметров, хуже обобщение. GAP — стандарт для transfer learning классификаторов.",
+        "optimizer": "AdamW(learning_rate=1e-4, clipnorm=1.0, weight_decay=1e-3, ema_momentum=0.9). AdamW отделяет weight decay от градиентного обновления (в отличие от L2 в Adam). EMA (Exponential Moving Average) весов: предсказания делаются EMA-версией модели — более стабильные результаты."
+      }
+    },
+    {
+      "name": "LSTM Summarization",
+      "architecture": {
+        "encoder": "Bidirectional LSTM принимает sequence токенов. Выходное состояние (hidden state + cell state) с обоих направлений конкатенируется → контекстный вектор. Двунаправленность критична для суммаризации: энкодер должен 'видеть' весь документ, а не только прошлое.",
+        "decoder": "Unidirectional LSTM генерирует токены авторегрессивно. На входе — выход предыдущего шага + контекстный вектор энкодера (concat). Teacher forcing при обучении: на входе — истинный предыдущий токен (не предсказанный). Ускоряет сходимость, но создаёт exposure bias на inference.",
+        "inference_mode": "inference_summary(): encoder запускается один раз → сохранение states. Decoder запускается пошагово: token → LSTM → softmax → argmax → следующий token. Остановка по <EOS> или max_length.",
+        "regularization": "Recurrent Dropout (rate=0.2): маски dropout применяются одинаково по всем временным шагам (не новая маска на каждом шаге). Это корректный recurrent dropout по Gal & Ghahramani. L2(1e-4) на веса LSTM-ячеек.",
+        "metrics_callback": "Кастомный keras Callback: on_epoch_end → выборка 50 примеров из val → генерация суммаризаций → ROUGE/BLEU/METEOR через HF evaluate → logging в историю. Не влияет на функцию потерь — только мониторинг."
+      },
+      "seq2seq_insights": "Ключевое ограничение vanilla seq2seq: весь входной документ сжимается в один вектор фиксированного размера. При длинных текстах (законопроекты BillSum — тысячи токенов) это bottleneck. Attention mechanism решает эту проблему, но в данном проекте реализован базовый вариант для понимания фундамента."
+    },
+    {
+      "name": "Biomedical NER",
+      "ner_specific_mechanics": {
+        "tokenization_challenge": "BERT использует WordPiece: слово 'hepatitis' → ['hepat', '##itis']. NER-метка у слова одна. Нужно: первый subword-токен получает истинную метку (B-Disease), все последующие subword-токены того же слова → -100 (исключаются из loss). Без этого модель получает неверные обучающие сигналы.",
+        "bio_scheme": "B-Chemical (начало), I-Chemical (продолжение), B-Disease, I-Disease, O (не сущность). 5 классов. B/I-разметка позволяет различать соседние сущности одного типа.",
+        "dynamic_padding": "custom collate_fn с pad_sequence(batch_first=True): каждый батч паддируется до длины самого длинного примера в батче, а не до глобального максимума. Экономия памяти и вычислений: короткие батчи реально короче.",
+        "evaluation": "sklearn.classification_report: precision/recall/F1 per-class + macro/weighted. f1_score(average='macro') — основная метрика. Важно: O-класс исключается из macro-усреднения, т.к. доминирует по частоте и завысил бы общий F1.",
+        "domain_specific_bert": "BiomedNLP-PubMedBERT обучен на 14M+ абстрактов PubMed. Словарь содержит медицинскую терминологию. Это критично для NER: generic BERT будет разбивать 'ibuprofen' на редкие подслова, PubMedBERT знает его как единый токен."
+      }
+    },
+    {
+      "name": "Ensemble Classification",
+      "eda_and_preprocessing": {
+        "missing_values": "fillna(median): медиана устойчива к выбросам в отличие от среднего. Для медицинских данных (нулевые значения BMI, инсулина — биологически невозможны) нули заменяются медианой соответствующего столбца.",
+        "feature_scaling": "StandardScaler перед LogisticRegression и Naive Bayes (чувствительны к масштабу). RandomForest и GradientBoosting — инвариантны к масштабу (tree-based), scaling не нужен, но применялся для единообразия pipeline.",
+        "eda": "Матрица корреляций Пирсона через seaborn heatmap. Распределения признаков через histplot с kde. Boxplot для выявления выбросов per-feature. Pairplot для визуализации попарных зависимостей.",
+        "feature_importance": "rfc.feature_importances_ — Gini importance: средневзвешенное уменьшение impurity при сплитах по данному признаку. Нормируется к сумме 1. Визуализация: горизонтальный barplot с сортировкой по убыванию важности."
+      },
+      "model_comparison": {
+        "models": "LogisticRegression (baseline, интерпретируемость через коэффициенты), GaussianNaiveBayes (предположение независимости признаков), RandomForestClassifier (ensemble, Gini importance), GradientBoostingRegressor (использован с порогом для классификации).",
+        "metrics": "Accuracy, Precision, Recall, F1 на тестовой выборке. Confusion Matrix через sklearn → seaborn heatmap. ROC AUC через roc_auc_score."
+      }
+    }
+  ]
+}

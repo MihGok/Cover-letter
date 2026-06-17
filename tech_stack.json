@@ -1,0 +1,312 @@
+{
+  "_purpose": "Каталог навыков для сопоставления с требованиями вакансий. Каждый навык: уровень, доказательство, контекст применения и формулировки для сопроводительного письма.",
+  "_levels": {
+    "strong": "применял в нескольких проектах, знаю нюансы",
+    "proficient": "уверенно применял в одном-двух проектах",
+    "familiar": "базовые знания, применял в учебных задачах"
+  },
+  "ml_dl": [
+    {
+      "name": "PyTorch",
+      "level": "strong",
+      "evidence": "Основной фреймворк в 5+ проектах: PAS (production CNN/ViT), DeepSeek fine-tuning, ASL CNN, Biomedical NER, LLM Endpoint. Писал кастомные Dataset, DataLoader, training loop, custom loss.",
+      "cover_letter_phrases": ["реализовывал модели на PyTorch", "знаком с экосистемой PyTorch (Lightning, torchmetrics, torchvision)"]
+    },
+    {
+      "name": "PyTorch Lightning",
+      "level": "strong",
+      "evidence": "Стандартный training framework во всех PyTorch-проектах. Знаю LightningModule (training_step, validation_step, configure_optimizers), Trainer (callbacks, accelerator, gradient_clip), callbacks (EarlyStopping, ModelCheckpoint, SWA).",
+      "cover_letter_phrases": ["использовал PyTorch Lightning для структурирования обучающего цикла"]
+    },
+    {
+      "name": "TensorFlow / Keras",
+      "level": "proficient",
+      "evidence": "2 проекта: LSTM seq2seq суммаризация (BillSum) и Transfer Learning сравнение архитектур (SMIDS). Кастомные Callback, Model subclassing, Sequential и Functional API.",
+      "cover_letter_phrases": ["владею TensorFlow/Keras для построения нейросетевых моделей"]
+    },
+    {
+      "name": "Transfer Learning",
+      "level": "strong",
+      "evidence": "PAS: ImageNet→дерматоскопия (PyTorch), SMIDS: VGG16/MobileNet/ResNet50→морфология (Keras), DeepSeek: PHP code-to-docstring, NER: PubMedBERT→BC5CDR. Знаю стратегии заморозки/разморозки слоёв.",
+      "cover_letter_phrases": ["применял Transfer Learning для задач с ограниченным доменным датасетом"]
+    },
+    {
+      "name": "Computer Vision (CNN)",
+      "level": "strong",
+      "evidence": "PAS (7-классовая дерматоскопия), ASL CNN (29 классов, 16 конфигураций grid search), SMIDS (3 класса морфологии). Знаю Conv2d, BatchNorm, Dropout, MaxPool, AdaptiveAvgPool, architeture tuning.",
+      "cover_letter_phrases": ["разрабатывал CNN-архитектуры для задач классификации изображений"]
+    },
+    {
+      "name": "NLP / NER",
+      "level": "strong",
+      "evidence": "Biomedical NER: BC5CDR, BIO-разметка, word-piece alignment, PubMedBERT. DeepSeek: code summarization. LSTM суммаризация: seq2seq. Знаю tokenization, BIO-схему, метрики NER.",
+      "cover_letter_phrases": ["реализовывал NER-модели и задачи генерации текста"]
+    },
+    {
+      "name": "Hugging Face Transformers",
+      "level": "strong",
+      "evidence": "AutoModelForCausalLM (DeepSeek), AutoModelForTokenClassification (NER), AutoModel + AutoTokenizer. Знаю pipeline API, from_pretrained, save_pretrained, tokenizer-специфику (offset_mapping для NER).",
+      "cover_letter_phrases": ["использовал Hugging Face Transformers для fine-tuning предобученных моделей"]
+    },
+    {
+      "name": "Hugging Face Datasets",
+      "level": "strong",
+      "evidence": "Все проекты: load_dataset, DatasetDict, map() для препроцессинга, батчинг, кэширование. code_x_glue, BC5CDR, marmal88/skin_cancer, ASL, BillSum.",
+      "cover_letter_phrases": ["работал с Hugging Face Datasets для загрузки и обработки датасетов"]
+    },
+    {
+      "name": "LLM (локальный инференс, GGUF)",
+      "level": "strong",
+      "evidence": "LLM RAG Endpoint: llama-cpp-python, GGUF-формат, CUDA-ускорение, GBNF-грамматика для структурирования вывода, Qwen3 chain-of-thought, LRU-кэш моделей с управлением VRAM.",
+      "cover_letter_phrases": ["развёртывал локальные LLM с CUDA-ускорением", "контролировал формат вывода LLM через GBNF-грамматику"]
+    },
+    {
+      "name": "LLM Fine-tuning",
+      "level": "proficient",
+      "evidence": "DeepSeek Coder 1.3B: causal LM fine-tuning, маскировка padding-токенов в labels (-100), BLEU как целевая метрика, CometML трекинг. PubMedBERT: encoder fine-tuning для NER.",
+      "cover_letter_phrases": ["выполнял fine-tuning LLM на доменных задачах (code summarization, NER)"]
+    },
+    {
+      "name": "RAG (Retrieval-Augmented Generation)",
+      "level": "proficient",
+      "evidence": "LLM Endpoint: чанкинг документов, sentence-transformers для эмбеддингов, Qdrant для векторного поиска, сборка контекстного промпта, оценка качества через ROUGE/BLEU/BERTScore.",
+      "cover_letter_phrases": ["проектировал RAG-пайплайны для работы с документами"]
+    },
+    {
+      "name": "Hyperparameter Optimization",
+      "level": "proficient",
+      "evidence": "ASL CNN: систематический grid search 16 конфигураций (filters, kernel, batch, dense). DeepSeek: сравнение LR-schedulers (Cosine, OneCycle, Cyclic). Автоматизация через циклы с wandb run per config.",
+      "cover_letter_phrases": ["проводил систематический поиск гиперпараметров с трекингом экспериментов"]
+    },
+    {
+      "name": "Class Imbalance Handling",
+      "level": "proficient",
+      "evidence": "PAS: Weighted Cross-Entropy Loss для дисбаланса MEL/NV. Знаю WeightedRandomSampler, оверсэмплинг (SMOTE), андерсэмплинг, focal loss как альтернативы.",
+      "cover_letter_phrases": ["решал проблему дисбаланса классов в медицинских датасетах"]
+    },
+    {
+      "name": "Data Augmentation",
+      "level": "proficient",
+      "evidence": "torchvision.transforms + Albumentations в PAS: RandomHorizontalFlip, RandomRotation, ColorJitter, RandomResizedCrop, Normalize. ASL CNN: базовые augmentations. Понимаю медицинскую специфику аугментации.",
+      "cover_letter_phrases": ["применял Data Augmentation для предотвращения переобучения"]
+    },
+    {
+      "name": "Классические ML (scikit-learn)",
+      "level": "proficient",
+      "evidence": "Ensemble Classification: LogisticRegression, GaussianNB, RandomForestClassifier, GradientBoostingRegressor. NER evaluation: classification_report, f1_score. Preprocessing: StandardScaler, train_test_split.",
+      "cover_letter_phrases": ["применял классические методы ML для анализа и классификации данных"]
+    },
+    {
+      "name": "Ансамблевые методы",
+      "level": "proficient",
+      "evidence": "RandomForestClassifier (bagging), GradientBoostingRegressor (boosting), алгоритм консилиума в PAS (voting через Counter). Gini feature importance для интерпретации.",
+      "cover_letter_phrases": ["использовал ансамблевые методы для повышения качества предсказаний"]
+    }
+  ],
+  "experiment_tracking": [
+    {
+      "name": "Weights & Biases (wandb)",
+      "level": "strong",
+      "evidence": "ASL CNN: 16 независимых run с group/project/name иерархией. NER: трекинг loss/F1 per epoch. DeepSeek: логирование BLEU. WandbLogger в PyTorch Lightning. Знаю sweeps для автоматизации HPO.",
+      "cover_letter_phrases": ["систематически отслеживал эксперименты через wandb"]
+    },
+    {
+      "name": "CometML",
+      "level": "proficient",
+      "evidence": "DeepSeek PHP Summarizer: CometLogger интеграция в PyTorch Lightning, логирование гиперпараметров и метрик (BLEU, loss) per epoch.",
+      "cover_letter_phrases": ["использовал CometML для трекинга ML-экспериментов"]
+    }
+  ],
+  "evaluation_metrics": [
+    {
+      "name": "Метрики классификации",
+      "level": "strong",
+      "evidence": "Accuracy, Precision, Recall, F1 (macro, weighted, per-class), ROC AUC, confusion matrix. Знаю когда использовать macro vs weighted F1, почему Accuracy misleading на несбалансированных данных.",
+      "cover_letter_phrases": ["правильно выбираю метрики оценки с учётом дисбаланса классов"]
+    },
+    {
+      "name": "NLG метрики (ROUGE, BLEU, METEOR, BERTScore)",
+      "level": "proficient",
+      "evidence": "LSTM суммаризация: ROUGE-1/2/L + BLEU + METEOR одновременно. DeepSeek: sacrebleu + nltk corpus_bleu. LLM Endpoint: ROUGE + BLEU + BERTScore + Jaccard для RAG evaluation.",
+      "cover_letter_phrases": ["оценивал качество генеративных моделей через ROUGE, BLEU, BERTScore"]
+    }
+  ],
+  "backend_infrastructure": [
+    {
+      "name": "FastAPI",
+      "level": "strong",
+      "evidence": "PAS production-сервис + LLM RAG Endpoint. Async endpoints, Pydantic validation, BackgroundTasks, middleware (CORS), dependency injection, File upload handling, router-декомпозиция.",
+      "cover_letter_phrases": ["разрабатывал REST API на FastAPI с асинхронной обработкой запросов"]
+    },
+    {
+      "name": "Python (async/await)",
+      "level": "strong",
+      "evidence": "PAS: httpx.AsyncClient, async SQLAlchemy (psycopg v3), asyncio tasks. LLM Endpoint: FastAPI BackgroundTasks, ThreadPoolExecutor для CPU-bound GPU tasks.",
+      "cover_letter_phrases": ["применял асинхронное программирование для высоконагруженных сервисов"]
+    },
+    {
+      "name": "SQLAlchemy (async ORM)",
+      "level": "proficient",
+      "evidence": "PAS: AsyncSession, async with session.begin(), selectinload для eager loading (решение N+1), relationship mapping, DDL через declarative base.",
+      "cover_letter_phrases": ["проектировал ORM-схемы и оптимизировал запросы через SQLAlchemy"]
+    },
+    {
+      "name": "PostgreSQL",
+      "level": "proficient",
+      "evidence": "PAS: схема пациентов/обследований/диагнозов. JSONB для probability_distribution. Знаю индексирование, EXPLAIN ANALYZE, транзакции, внешние ключи, нормализацию до 3NF.",
+      "cover_letter_phrases": ["проектировал реляционные схемы и оптимизировал запросы в PostgreSQL"]
+    },
+    {
+      "name": "MinIO / S3",
+      "level": "familiar",
+      "evidence": "PAS: minio.Minio client, put_object для загрузки снимков, presigned_get_object с TTL для безопасного временного доступа.",
+      "cover_letter_phrases": ["интегрировал S3-совместимое объектное хранилище в production-сервис"]
+    },
+    {
+      "name": "Docker / Docker Compose",
+      "level": "proficient",
+      "evidence": "LLM Endpoint: Dockerfile с CUDA 12.9 base image, многоэтапная сборка, docker-compose с GPU reservations (driver: nvidia, count: 1, capabilities: [gpu]). PAS: контейнеризация всех сервисов.",
+      "cover_letter_phrases": ["контейнеризировал ML-сервисы через Docker с поддержкой GPU"]
+    },
+    {
+      "name": "Qdrant (векторная БД)",
+      "level": "familiar",
+      "evidence": "LLM RAG Endpoint: создание коллекций, upsert векторов с метаданными, cosine similarity поиск, top-k retrieval.",
+      "cover_letter_phrases": ["использовал Qdrant для векторного поиска в RAG-системах"]
+    },
+    {
+      "name": "httpx",
+      "level": "proficient",
+      "evidence": "PAS: AsyncClient с connection pool limits, таймауты, binary stream передача изображений. Понимаю отличие от requests (async, connection pooling, HTTP/2).",
+      "cover_letter_phrases": ["реализовывал асинхронные HTTP-клиенты через httpx"]
+    }
+  ],
+  "data_analysis": [
+    {
+      "name": "Python (pandas, numpy)",
+      "level": "strong",
+      "evidence": "Все аналитические проекты: DataFrame операции (groupby, merge, pivot_table, apply), работа с пропусками, numpy vectorization, broadcast operations. Стандартный инструментарий для EDA и preprocessing.",
+      "cover_letter_phrases": ["анализировал и трансформировал данные через pandas и numpy"]
+    },
+    {
+      "name": "EDA (Exploratory Data Analysis)",
+      "level": "proficient",
+      "evidence": "Ensemble Classification: распределения признаков (histplot, boxplot), корреляционная матрица (heatmap), pairplot, выявление выбросов, обработка пропусков. Стандартный EDA-цикл перед обучением модели.",
+      "cover_letter_phrases": ["проводил полноценный EDA с визуализацией распределений и корреляций"]
+    },
+    {
+      "name": "Статистический анализ",
+      "level": "proficient",
+      "evidence": "Курс прикладной математики: описательная статистика, проверка гипотез (t-тест, хи-квадрат), корреляционный анализ (Пирсон, Спирмен). PCA и t-SNE для уменьшения размерности.",
+      "cover_letter_phrases": ["применяю статистические методы для анализа и проверки гипотез"]
+    },
+    {
+      "name": "Корреляционный анализ",
+      "level": "proficient",
+      "evidence": "Ensemble Classification: матрица корреляций Пирсона через seaborn. Понимаю ограничения линейной корреляции и когда нужны ранговые меры (Спирмен) для нелинейных зависимостей.",
+      "cover_letter_phrases": ["проводил корреляционный анализ для выявления взаимосвязей между признаками"]
+    },
+    {
+      "name": "PCA / t-SNE / UMAP",
+      "level": "proficient",
+      "evidence": "Используются для визуализации высокоразмерных данных (эмбеддингов, feature vectors): PCA (линейное, интерпретируемо), t-SNE (нелинейное, для кластеров), UMAP (быстрее t-SNE, глобальная структура).",
+      "cover_letter_phrases": ["применял методы снижения размерности для анализа и визуализации данных"]
+    }
+  ],
+  "visualization": [
+    {
+      "name": "Power BI",
+      "level": "familiar",
+      "evidence": "Построение интерактивных дашбордов: подключение к источникам (Excel, SQL, CSV), DAX-формулы для вычисляемых мер (CALCULATE, SUMX, FILTER, RELATED), типы визуализаций (воронка, KPI, матрица, scatter), фильтры и срезы, публикация в Power BI Service.",
+      "cover_letter_phrases": ["создавал интерактивные дашборды в Power BI", "писал DAX-формулы для бизнес-метрик"]
+    },
+    {
+      "name": "Matplotlib / Seaborn",
+      "level": "strong",
+      "evidence": "Все проекты: confusion matrix heatmap, learning curves, feature importance barplot, распределения, subplot-сетки для сравнения моделей. Знаю кастомизацию (figsize, axes, legends, annotations).",
+      "cover_letter_phrases": ["визуализировал результаты анализа и обучения моделей через matplotlib/seaborn"]
+    },
+    {
+      "name": "Plotly",
+      "level": "familiar",
+      "evidence": "Интерактивные графики для исследовательского анализа: scatter, bar, line с hover-подсказками. 3D scatter для визуализации эмбеддингов.",
+      "cover_letter_phrases": ["строил интерактивные визуализации через Plotly"]
+    }
+  ],
+  "office_tools": [
+    {
+      "name": "Microsoft Excel",
+      "level": "proficient",
+      "evidence": "Сводные таблицы (Pivot Tables) для агрегации данных. Функции: VLOOKUP/XLOOKUP, INDEX/MATCH, SUMIFS, COUNTIFS, AVERAGEIFS. Условное форматирование. Power Query для ETL из внешних источников. Графики (гистограммы, линейные, scatter). Базовые макросы VBA.",
+      "cover_letter_phrases": ["работаю с Excel на уровне сводных таблиц, сложных формул и Power Query"]
+    },
+    {
+      "name": "Google Sheets / Docs",
+      "level": "proficient",
+      "evidence": "Аналогичный функционал Excel для совместной работы. QUERY-функция для SQL-подобных запросов внутри таблицы. Скриптинг через Google Apps Script для автоматизации.",
+      "cover_letter_phrases": ["использую Google Sheets для совместного анализа данных"]
+    }
+  ],
+  "sql": [
+    {
+      "name": "SQL (аналитический уровень)",
+      "level": "proficient",
+      "evidence": "Проектирование схем в PAS (PostgreSQL). Курсы по СУБД. Знаю: агрегации (GROUP BY, HAVING), оконные функции (ROW_NUMBER, RANK, LAG, LEAD, SUM OVER PARTITION), CTE (WITH), многотабличные JOIN, подзапросы, EXPLAIN ANALYZE для оптимизации.",
+      "cover_letter_phrases": ["пишу сложные аналитические SQL-запросы с оконными функциями и CTE"]
+    },
+    {
+      "name": "Оконные функции SQL",
+      "level": "proficient",
+      "evidence": "ROW_NUMBER, RANK, DENSE_RANK для ранжирования. LAG/LEAD для временных рядов и сравнения с предыдущим периодом. SUM/AVG/COUNT OVER PARTITION для скользящих агрегатов.",
+      "cover_letter_phrases": ["применяю оконные функции SQL для аналитических расчётов"]
+    }
+  ],
+  "db_design_and_modeling": [
+    {
+      "name": "Проектирование реляционных БД",
+      "level": "proficient",
+      "evidence": "PAS: спроектировал схему Patient → Examination → Snapshot → Diagnosis с нормализацией до 3NF. Выбор типов данных, внешние ключи, CHECK-ограничения. Курс 'Базы данных' в МИРЭА.",
+      "cover_letter_phrases": ["проектирую реляционные схемы с нормализацией до 3NF"]
+    },
+    {
+      "name": "ERD (Entity-Relationship Diagrams)",
+      "level": "proficient",
+      "evidence": "Построение ER-диаграмм для систем: сущности, атрибуты, первичные и внешние ключи, кардинальность связей (1:1, 1:N, M:N). Нотации: Crow's Foot, Chen. Инструменты: draw.io, dbdiagram.io.",
+      "cover_letter_phrases": ["строю ERD для проектирования структуры данных до написания кода"]
+    },
+    {
+      "name": "Логическая и физическая модели БД",
+      "level": "proficient",
+      "evidence": "Логическая модель: сущности и связи без привязки к СУБД, абстрактные типы данных. Физическая модель: конкретные типы PostgreSQL (JSONB, TIMESTAMPTZ, UUID), индексы (B-tree, GIN для JSONB), партиционирование.",
+      "cover_letter_phrases": ["разрабатываю логические и физические модели данных"]
+    }
+  ],
+  "uml": [
+    {
+      "name": "UML диаграммы",
+      "level": "proficient",
+      "evidence": "Курс проектирования ИС в МИРЭА. Строю диаграммы: Use Case (акторы, прецеденты, extend/include), Class (классы, интерфейсы, наследование, ассоциации, агрегация, композиция), Sequence (межкомпонентное взаимодействие), Activity (бизнес-процессы), Component/Deployment (архитектура системы). Инструменты: draw.io, PlantUML, Mermaid.",
+      "cover_letter_phrases": ["проектирую системы с использованием UML-диаграмм (Use Case, Class, Sequence, Activity)"]
+    },
+    {
+      "name": "Архитектурное проектирование",
+      "level": "proficient",
+      "evidence": "PAS: микросервисная архитектура (ML-сервис + API-сервис + БД + S3). LLM Endpoint: Docker-compose с GPU, Qdrant, API. Умею декомпозировать систему на компоненты и описывать их взаимодействие.",
+      "cover_letter_phrases": ["проектирую архитектуру систем с декомпозицией на компоненты"]
+    }
+  ],
+  "programming": [
+    {
+      "name": "Python",
+      "level": "strong",
+      "evidence": "Основной язык. Владею: ООП (dataclasses, ABC, Protocol), async/await, generators, context managers, decorators, type hints, pathlib, collections (Counter, defaultdict, deque), регулярные выражения.",
+      "cover_letter_phrases": ["Python — основной язык разработки (ООП, async, type hints)"]
+    },
+    {
+      "name": "Git",
+      "level": "proficient",
+      "evidence": "Все проекты в GitHub (github.com/MihGok). Работа с ветками, pull requests, .gitignore для датасетов и весов моделей.",
+      "cover_letter_phrases": ["использую Git для версионирования кода и совместной разработки"]
+    }
+  ]
+}
